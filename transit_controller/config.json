@@ -1,0 +1,7 @@
+{
+    "server" : "BankNet.BankSys.Host",
+    "systemName" : "Transit Controller",
+    "systemUser" : "bsys.transit",
+    "systemPassword" : "bsys.transit",
+    "intention" : "transit"
+}
