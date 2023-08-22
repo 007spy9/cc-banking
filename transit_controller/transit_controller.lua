@@ -12,6 +12,7 @@ local CONFIG_FILE = "transit_controller.cfg"
 local serverSocket
 local config
 local connectionEstablished = false
+local activated = false
 --endregion
 
 --region Methods
@@ -25,13 +26,38 @@ local onLogout
 local onKeyUp
 local onTerminate
 
+--region Message Methods
+
+--Report the status of the system
+function reportStatus(status)
+    local message = {
+        type = "status",
+        message = status
+    }
+
+    cryptoNET.send(serverSocket, message)
+end
+
+--endregion
+
 --region Network Events
 function onNetworkStartup()
+    --Get the side of the wireless modem and make sure it is not the wired modem
+    local modemSide
+    local modems = { peripheral.find("modem", function(name, modem)
+        return modem.isWireless() -- Check this modem is wireless.
+    end) }
+    
+    for _, modem in pairs(modems) do
+        --Get the side that the modem is on
+        modemSide = peripheral.getName(modem)
+      end
+
     --Read the configuration file
     config = readConfigurationFile(CONFIG_FILE)
 
     --Prepare the network connections
-    serverSocket = cryptoNET.connect(config.server, false)
+    serverSocket = cryptoNET.connect(config.server, false, false, modemSide)
 
     --Send a login message to the host controller
     cryptoNET.login(serverSocket, config.systemUsername, config.systemPassword)
@@ -125,7 +151,39 @@ function onEncryptedMessageReceived(message, socket, server)
 
     if (connectionEstablished) then
         --The server is successfully connected, so we can process instructions
+
+        --If the message is a request for intention, then send an intention message along with the intention
+        if (message == "get_intention") then
+            local message = {
+                type = "intention",
+                message = config.intention
+            }
+
+            cryptoNET.send(socket, message)
+
+        --If the message is "disconnect", then disconnect from the server
+        elseif (message == "disconnect") then
+            print ("Disconnecting from server")
+
+            reportStatus("disconnected")
+
+            cryptoNET.logout(socket)
+
+            cryptoNET.close(socket)
+
+            connectionEstablished = false
+            activated = false
+
+            --If the message is "activate", then activate the system
+        elseif (message == "activate") then
+            print("Activating system")
+            activated = true
+
+            --Send a message to the host controller to report system status
+            reportStatus("ready")
+        end
     end
+
 end
 
 --Plain Message Received Event Handler
@@ -154,7 +212,9 @@ end
 --Key Up Event Handler
 function onKeyUp(key)
     if (key == keys.q) then
+        reportStatus("shutting down")
         print("Q key pressed, shutting down server")
+        reportStatus("disconnected")
         cryptoNET.closeAll()
 
         os.shutdown()

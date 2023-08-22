@@ -10,6 +10,9 @@ local pretty = require("cc.pretty")
 --The server address for the host controller
 HOST_CONTROLLER_SERVER = "BankNet.BankSys.Host"
 CLIENT_ACCESS_SERVER = "BankNet.BankSys.Client"
+
+--The account data file path
+ACCOUNT_DATA_FILE = "accountData.dat"
 --endregion
 
 --region Data Types
@@ -82,7 +85,6 @@ function updateProcessorStates(monitors, processors)
         --The [ID] will be the ID of the processor
         --The [Status] will be the status of the processor
 
-        print(#processors)
         for j = 1, #processors do
             --Move the cursor to the line below the word "Processors:"
             monitors[i].setCursorPos(1, 6 + j)
@@ -120,10 +122,12 @@ function updateProcessorStates(monitors, processors)
 
             monitors[i].write(statusToString(processors[j].status))
 
-            print(j .. " " .. processors[j].id .. " " .. processors[j].status)
+            --print(j .. " " .. processors[j].id .. " " .. processors[j].status)
             --Print the position of the cursor
-            print(monitors[i].getCursorPos())
+            --print(monitors[i].getCursorPos())
         end
+
+        monitors[i].setCursorPos(1, 13)
 
         --Reset text colour to white
         monitors[i].setTextColor(colors.white)
@@ -221,6 +225,46 @@ function statusToString(status)
     end
 end
 
+--Function to convert status string to number
+function processorStatusToNumber(status)
+
+    status = string.lower(status)
+
+    if status == "disconnected" then
+        return processorStatus.disconnected
+    elseif status == "ready" then
+        return processorStatus.ready
+    elseif status == "processing" then
+        return processorStatus.processing
+    elseif status == "error" then
+        return processorStatus.error
+    elseif status == "shutting down" then
+        return processorStatus.shuttingDown
+    else
+        return -1
+    end
+end
+
+--Function to convert status string to number
+function networkStatusToNumber(status)
+
+    status = string.lower(status)
+
+    if status == "disconnected" then
+        return processorStatus.disconnected
+    elseif status == "ready" then
+        return processorStatus.ready
+    elseif status == "processing" then
+        return processorStatus.processing
+    elseif status == "error" then
+        return processorStatus.error
+    elseif status == "shutting down" then
+        return processorStatus.shuttingDown
+    else
+        return -1
+    end
+end
+
 --Function to convert network status number to string
 function networkStatusToString(status)
     if status == networkStatus.offline then
@@ -259,11 +303,160 @@ end
 
 --endregion
 
+--region Account Data Functions
+
+--Load the account data from the file
+function loadAccountData(path)
+    --Load the account data from the file (.dat)
+    --If the file does not exist, return nil
+    --If the file exists, return the account data parsed from the JSON file
+
+    --Check that the file exists
+    if (not fs.exists(path)) then
+        return nil
+    end
+
+    --Open the file
+    local file = fs.open(path, "r")
+
+    --Read the file
+    local fileContents = file.readAll()
+
+    --Parse the file contents as JSON
+    local accountData = textutils.unserializeJSON(fileContents)
+
+    --Close the file
+    file.close()
+
+    --If the account data is nil, return nil
+    if (accountData == nil) then
+        return nil
+    end
+
+    print("Account data loaded")
+
+    --Return the account data
+    return accountData
+end
+
+--Save the account data to the file
+function saveAccountData(path, accountData)
+    --Save the account data to the file (.dat)
+    --If the file does not exist, create it
+    --If the file exists, overwrite it
+
+    --Open the file
+    local file = fs.open(path, "w")
+
+    --Write the account data to the file as JSON
+    file.write(textutils.serializeJSON(accountData))
+
+    --Close the file
+    file.close()
+end
+
+--Modify the data of an account
+function modifyAccountData(username, data)
+    --If the account data is nil, return false
+    if (AccountData == nil) then
+        return false
+    end
+
+    --The account data is in the following format:
+    --[{
+    --  username,
+    --  intention,
+    -- }]
+
+    --Find the account with the given username
+    local found = false
+    for i = 1, #AccountData do
+        if (AccountData[i].username == username) then
+            --Set the data at the given index to the new data
+            AccountData[i] = data
+            found = true
+            break
+        end
+    end
+
+    --If the account does not exist, return false
+    if (not found) then
+        return false
+    end
+
+    --Save the account data to the file
+    saveAccountData(ACCOUNT_DATA_FILE, AccountData)
+
+    --Return true
+    return true
+end
+
+--Get the data of an account
+function getAccountData(accountData, username)
+    --If the account data is nil, return nil
+    if (accountData == nil) then
+        return nil
+    end
+
+    --The account data is in the following format:
+    --[{
+    --  username,
+    --  intention,
+    -- }]
+
+    --Find the account with the given username
+    for i = 1, #accountData do
+        if (accountData[i].username == username) then
+            --Return the data at the given index
+            return accountData[i]
+        end
+    end
+
+    --If the account does not exist, return nil
+    return nil
+end
+
+--Add an account to the account data
+function addAccountData(data)
+    --If the account data is nil, create a new list
+    if (AccountData == nil) then
+        AccountData = {}
+    end
+
+    --The account data is in the following format:
+    --[{
+    --  username,
+    --  intention,
+    -- }]
+
+    --Add the data to the account data
+    AccountData[#AccountData + 1] = data
+
+    --Save the account data to the file
+    saveAccountData(ACCOUNT_DATA_FILE, AccountData)
+
+    --Return true
+    return true
+end
+
+--endregion
+
 --region Network Events
 function onNetworkStartup()
+    --Get the side of the wireless modem and make sure it is not the wired modem
+    local modemSide
+    local modems = { peripheral.find("modem", function(name, modem)
+        return modem.isWireless() -- Check this modem is wireless.
+    end) }
+    
+    for _, modem in pairs(modems) do
+        --Get the side that the modem is on
+        modemSide = peripheral.getName(modem)
+      end
+
     --Prepare the network connections
-    cryptoNET.host(HOST_CONTROLLER_SERVER, false)
-    --cryptoNET.host(CLIENT_ACCESS_SERVER, false)
+    HostSocket = cryptoNET.host(HOST_CONTROLLER_SERVER, false, false, modemSide)
+    --ClientSocket = cryptoNET.host(CLIENT_ACCESS_SERVER, false)
 
     print("Event loop started")
 
@@ -357,7 +550,79 @@ end
 
 --Encrypted Message Received Event Handler
 function onEncryptedMessageReceived(message, socket, server)
-    print("Encrypted message" .. message .. socket.target)
+    --If the message is an object, then check the type property
+    --If the type is intention, then verify the intention
+
+    --Check that the message is an object
+    if (type(message) ~= "table") then
+        return
+    end
+
+    --Check that the message has a type property
+    if (message.type == nil) then
+        return
+    end
+
+    --Check that the message type is intention
+    if (message.type == "intention") then
+        --Get the account data for the socket username
+        local accountData = getAccountData(AccountData, socket.username)
+
+        --If the account data is nil, then the account does not exist, so return
+        if (accountData == nil) then
+            return
+        end
+
+        --Check that the intention is the same as the account intention
+        if (message.message ~= accountData.intention) then
+            --If the intention is not the same, then send a message to the client to disconnect
+            cryptoNET.send(socket, "disconnect")
+        else
+            --If the intention is the same, then send a message to the client to activate
+            cryptoNET.send(socket, "activate")
+
+            --Set the processor status to processing
+            for i = 1, #Processors do
+                if (Processors[i].id == accountData.intention) then
+                    Processors[i].status = processorStatus.ready
+                    break
+                end
+            end
+
+            --Update the processor states
+            updateProcessorStates(Monitors, Processors)
+        end
+
+        --If the type is status, then update the status of the relevant processor
+    elseif (message.type == "status") then
+        --Get the socket username
+        local username = socket.username
+
+        --Get the account data for the socket username
+        local accountData = getAccountData(AccountData, username)
+
+        --If the account data is nil, then the account does not exist, so return
+        if (accountData == nil) then
+            return
+        end
+
+        --Get the processor ID
+        local processorId = accountData.intention
+
+        --Convert the status to a number
+        local status = processorStatusToNumber(message.message)
+
+        --Update the status of the relevant processor
+        for i = 1, #Processors do
+            if (Processors[i].id == processorId) then
+                Processors[i].status = status
+                break
+            end
+        end
+
+        --Update the processor states
+        updateProcessorStates(Monitors, Processors)
+    end
 end
 
 --Plain Message Received Event Handler
@@ -368,6 +633,21 @@ end
 --Login Event Handler
 function onLogin(username, socket, server)
     print("Login" .. username .. socket.target)
+
+    --Get the account data
+    local accountData = getAccountData(AccountData, username)
+
+    --If the account data is nil, then the account does not exist, so return
+    if (accountData == nil) then
+        return
+    end
+
+    --Process the intention
+    --Temporarily, just print the intention
+    print(accountData.intention)
+
+    --Send a request to the client to get the intention
+    cryptoNET.send(socket, "get_intention")
 end
 
 --Login Failed Event Handler
@@ -382,9 +662,58 @@ end
 
 --Key Up Event Handler
 function onKeyUp(key)
+    if (TerminalOpen) then
+        --If the terminal is open, then accept input from the terminal and don't process key presses
+        return
+    end
+
     if (key == keys.q) then
         print("Q key pressed, shutting down server")
         cryptoNET.closeAll()
+    end
+
+    --If the key is "t", then accept input from the terminal
+    if (key == keys.t) then
+        print("T key pressed, accepting input from terminal")
+        TerminalOpen = true
+
+        --Print available commands
+        print("Available commands:")
+        print("createServiceAccount [username] [password] [intention]")
+        print("cancel")
+
+        local input = read()
+        
+        --Split the input into a list of words, separated by spaces
+        local inputWords = {}
+        for word in input:gmatch("([^%s]+)") do table.insert(inputWords, word) end
+
+        --If the first word is "createServiceAccount", then call the createServiceAccount function
+        if (inputWords[1] == "createServiceAccount") then
+            --Check that the input is valid
+            if (#inputWords ~= 4) then
+                print("Invalid input")
+                return
+            end
+
+            --Call the createServiceAccount function
+            local success = createServiceAccount(inputWords[2], inputWords[3], inputWords[4], HostSocket)
+
+            --If the account was created successfully, print a success message
+            if (success) then
+                print("Account created successfully")
+            else
+                print("Account creation failed")
+            end
+        
+        --If the first word is "cancel", then cancel the terminal input
+        elseif (inputWords[1] == "cancel") then
+            print("Terminal input cancelled")
+        else
+            print("Invalid input")
+        end
+
+        TerminalOpen = false
     end
 end
 
@@ -398,7 +727,7 @@ end
 --region Service Account Functions
 
 --Function to create a service account
-function createServiceAccount(id, password, server)
+function createServiceAccount(id, password, intention, server)
     --Create a new account with the ID and password
     --If the account already exists, return false
     --If the account is created successfully, return true
@@ -408,6 +737,15 @@ function createServiceAccount(id, password, server)
     end
 
     cryptoNET.addUser(id, password, 1, server)
+
+    --Create the account data
+    local accountData = {
+        username = id,
+        intention = intention
+    }
+
+    --Add the account data to the account data file
+    addAccountData(accountData)
 
     return true
 end
@@ -425,11 +763,16 @@ Processors = {
     --Add a dummy processor to the list
     { id = "accounts", status = processorStatus.disconnected },
     { id = "transit",  status = processorStatus.disconnected },
-    { id = "gambling", status = processorStatus.ready },
-    { id = "market",   status = processorStatus.error },
-    { id = "loans",    status = processorStatus.shuttingDown },
-    { id = "admin",    status = processorStatus.processing }
+    { id = "gambling", status = processorStatus.disconnected },
+    { id = "market",   status = processorStatus.disconnected },
+    { id = "loans",    status = processorStatus.disconnected },
+    { id = "admin",    status = processorStatus.disconnected }
 }
+
+AccountData = loadAccountData(ACCOUNT_DATA_FILE)
+TerminalOpen = false
+HostSocket = nil
+ClientSocket = nil
 --endregion
 
 --region Main Code
