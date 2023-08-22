@@ -1,0 +1,7 @@
+{
+    "server" : "BankNet.BankSys.Host",
+    "systemName" : "Account Controller",
+    "systemUser" : "bsys.accounts",
+    "systemPassword" : "bsys.accounts",
+    "intention" : "accounts"
+}

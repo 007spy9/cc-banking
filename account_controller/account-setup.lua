@@ -49,14 +49,14 @@ local function wget(option, url, ziel)
 local cryptoApiPaste = "https://raw.githubusercontent.com/SiliconSloth/CryptoNet/master/cryptoNet.lua" 
 
  --The pastebin code for the controller
-local controllerPaste = "fqiGtNA1"
+local controllerPaste = "g5RtpeZf"
 
 local cryptoApiFileName = "cryptoNET"
-local controllerFileName = "transit_controller"
-local controllerConfigFileName = "transit_controller.cfg"
-local systemName = "Transit Controller"
+local controllerFileName = "account_controller"
+local controllerConfigFileName = "account_controller.cfg"
+local systemName = "Account Controller"
 local serverHost = "BankNet.BankSys.Host"
-local intention = "transit"
+local intention = "accounts"
 --#endregion
 
 --#region Processing
@@ -80,7 +80,7 @@ print("BankSys")
 --Set the cursor position to the middle of the screen, below the word "BankSys"
 term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 1)
 
---Write the name of the system in the middle of the screen
+--Write the word "Host Controller" in the middle of the screen
 print(systemName)
 
 --Set the cursor position to the middle of the screen, below the word "Host Controller"
@@ -112,7 +112,7 @@ print("BankSys")
 --Set the cursor position to the middle of the screen, below the word "BankSys"
 term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 1)
 
---Write the name of the system in the middle of the screen
+--Write the word "Host Controller" in the middle of the screen
 print(systemName)
 
 --Set the cursor position to the middle of the screen, below the word "Host Controller"
@@ -139,7 +139,7 @@ print("BankSys")
 --Set the cursor position to the middle of the screen, below the word "BankSys"
 term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 1)
 
---Write the word "Host Controller" in the middle of the screen
+--Write the name of the system in the middle of the screen
 print(systemName)
 
 --Set the cursor position to the middle of the screen, below the word "Host Controller"
@@ -193,7 +193,7 @@ print("BankSys")
 --Set the cursor position to the middle of the screen, below the word "BankSys"
 term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 1)
 
---Write the name of the system in the middle of the screen
+--Write the word "Host Controller" in the middle of the screen
 print(systemName)
 
 --Set the cursor position to the middle of the screen, below the word "Host Controller"

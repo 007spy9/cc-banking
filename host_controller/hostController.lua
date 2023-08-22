@@ -693,6 +693,7 @@ function onKeyUp(key)
             --Check that the input is valid
             if (#inputWords ~= 4) then
                 print("Invalid input")
+                TerminalOpen = false
                 return
             end
 
