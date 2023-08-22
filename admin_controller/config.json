@@ -1,0 +1,7 @@
+{
+    "server" : "BankNet.BankSys.Host",
+    "systemName" : "Admin Controller",
+    "systemUser" : "bsys.admin",
+    "systemPassword" : "bsys.admin",
+    "intention" : "admin"
+}
