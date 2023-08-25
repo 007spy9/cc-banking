@@ -127,6 +127,21 @@ term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 2)
 --Write the word "Installing..." in the middle of the screen
 print("Installing...")
 
+--Delete the cryptoAPI
+fs.delete(cryptoApiFileName)
+
+--Delete the middleclass API
+fs.delete(middleClassFileName)
+
+--Delete the controller core
+fs.delete(controllerCoreName)
+
+--Delete the current controller implementation
+fs.delete(currentControllerFileName)
+
+--Delete the current controller main implementation
+fs.delete(currentControllerMainFileName)
+
 --Download the cryptoAPI into the root directory in the background
 wget(_cryptoApiPaste, cryptoApiFileName)
 

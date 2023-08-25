@@ -105,15 +105,15 @@ local _updateNetworkStatus = function(self, monitors, status)
         monitors[i].setCursorPos(10, 4)
         
         --Set the text colour to green for online, red for offline, yellow for preparing, grey for shutting down, and red for error
-        if status == self.networkStatus.online then
+        if status == Controller.networkStatus.online then
             monitors[i].setTextColor(colors.green)
-        elseif status == self.networkStatus.offline then
+        elseif status == Controller.networkStatus.offline then
             monitors[i].setTextColor(colors.red)
-        elseif status == self.networkStatus.preparing then
+        elseif status == Controller.networkStatus.preparing then
             monitors[i].setTextColor(colors.yellow)
-        elseif status == self.networkStatus.shuttingDown then
+        elseif status == Controller.networkStatus.shuttingDown then
             monitors[i].setTextColor(colors.gray)
-        elseif status == self.networkStatus.error then
+        elseif status == Controller.networkStatus.error then
             monitors[i].setTextColor(colors.red)
         else
             --If the status is not recognised, place a question mark
