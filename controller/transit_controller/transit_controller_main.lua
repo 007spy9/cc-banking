@@ -7,8 +7,8 @@ local class = require("middleclass")
 
 local TransitController = require("transit_controller")
 
-CONFIG_FILE = "transit_controller.cfg"
+local CONFIG_FILE = "transit_controller.cfg"
 
 local controller = TransitController:new(CONFIG_FILE)
 
-controller.startServer()
+controller:startServer()

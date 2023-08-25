@@ -9,11 +9,6 @@ local Controller = require("controller")
 
 local TransitController = class("TransitController", Controller)
 
---region Constants
---The config file path
-local CONFIG_FILE = "transit_controller.cfg"
---endregion
-
 --region Constructor
 
 function TransitController:initialize(configFileName)
@@ -57,7 +52,9 @@ end
 
 --Key Up Event Handler
 function TransitController:keyUpBehaviour(key)
-   
+   if (key == keys.q) then
+        os.shutdown()
+   end
 end
 
 --Terminate Event Handler

@@ -2,71 +2,54 @@
 
 --Load libraries
 os.loadAPI("cryptoNET")
-local pretty = require("cc.pretty")
---local basalt = require("basalt")
 
+local class = require("middleclass")
+
+local Controller = require("controller")
+
+local HostController = class("HostController", Controller)
+
+--region Forward Declarations
+
+local _loadAccountData
+
+--endregion
 
 --region Constants
 --The server address for the host controller
-HOST_CONTROLLER_SERVER = "BankNet.BankSys.Host"
-CLIENT_ACCESS_SERVER = "BankNet.BankSys.Client"
+local HOST_CONTROLLER_SERVER = "BankNet.BankSys.Host"
+local CLIENT_ACCESS_SERVER = "BankNet.BankSys.Client"
 
 --The account data file path
-ACCOUNT_DATA_FILE = "accountData.dat"
+local ACCOUNT_DATA_FILE = "accountData.dat"
 --endregion
 
---region Data Types
---Define the different statuses of a processor
-local processorStatus = {
-    --The processor is offline or disconnected
-    disconnected = 0,
-    --The processor is online and ready to process
-    ready = 1,
-    --The processor is online and processing
-    processing = 2,
-    --The processor has encountered an error
-    error = 3,
-    --The processor is online and is shutting down
-    shuttingDown = 4
-}
+--region Variables
+--Try to get the attached monitors
+local Monitors = {}
 
-local networkStatus = {
-    --The network is offline
-    offline = 0,
-    --The network is online
-    online = 1,
-    --The network is starting up
-    preparing = 2,
-    --The network is shutting down
-    shuttingDown = 3,
-    --The network has an error
-    error = 4
-}
+--The processors list will store the different processing units linked to the host controller
+local Processors = {}
+
+local AccountData = _loadAccountData(ACCOUNT_DATA_FILE)
+local HostSocket = nil
+local ClientSocket = nil
 --endregion
 
---region Method Definitions
+--region Constructor
 
---region Forward declarations
-
-local statusToString
-local networkStatusToString
-local idToTitleCase
-local onConnectionOpened
-local onConnectionClosed
-local onEncryptedMessageReceived
-local onPlainMessageReceived
-local onLogin
-local onLoginFailed
-local onLogout
-local onKeyUp
-local onTerminate
+function HostController:initialize(monitors, processors)
+    Controller.initialize(self, "host_controller.cfg")
+    Monitors = monitors
+    Processors = processors
+end
 
 --endregion
 
 --region UI Functions
 
 --Function to update the processor states on the monitors
-function updateProcessorStates(monitors, processors)
+local _updateProcessorStates = function(self, monitors, processors)
     for i = 1, #monitors do
         --Below the word "Database:", place the word "Processors:" on the left
         monitors[i].setCursorPos(1, 6)
@@ -95,16 +78,16 @@ function updateProcessorStates(monitors, processors)
             --Place the tick or cross
             --Tick will be green, cross will be red, ! will be yellow, ... will be grey
             --Tick for ready, ! for error, ... for shutting down or processing, cross for disconnected
-            if processors[j].status == processorStatus.ready then
+            if processors[j].status == self.processorStatus.ready then
                 monitors[i].setTextColor(colors.green)
                 monitors[i].write("[+]")
-            elseif processors[j].status == processorStatus.error then
+            elseif processors[j].status == self.processorStatus.error then
                 monitors[i].setTextColor(colors.yellow)
                 monitors[i].write("[!]")
-            elseif processors[j].status == processorStatus.shuttingDown or processors[j].status == processorStatus.processing then
+            elseif processors[j].status == self.processorStatus.shuttingDown or processors[j].status == self.processorStatus.processing then
                 monitors[i].setTextColor(colors.gray)
                 monitors[i].write("[.]")
-            elseif processors[j].status == processorStatus.disconnected then
+            elseif processors[j].status == self.processorStatus.disconnected then
                 monitors[i].setTextColor(colors.red)
                 monitors[i].write("[X]")
             else
@@ -115,12 +98,12 @@ function updateProcessorStates(monitors, processors)
 
             --Place the ID
             monitors[i].setCursorPos(4, 6 + j)
-            monitors[i].write(idToTitleCase(processors[j].id))
+            monitors[i].write(self.idToTitleCase(processors[j].id))
 
             --Place the status at the length of the longest ID + 5
             monitors[i].setCursorPos(longestId + 5, 6 + j)
 
-            monitors[i].write(statusToString(processors[j].status))
+            monitors[i].write(self.statusToString(processors[j].status))
 
             --print(j .. " " .. processors[j].id .. " " .. processors[j].status)
             --Print the position of the cursor
@@ -135,7 +118,7 @@ function updateProcessorStates(monitors, processors)
 end
 
 --Function to update the network status on the monitors
-function updateNetworkStatus(monitors, status)
+local _updateNetworkStatus = function(self, monitors, status)
     for i = 1, #monitors do
         --Move the cursor to the line below the word "Status"
         monitors[i].setCursorPos(1, 4)
@@ -150,22 +133,22 @@ function updateNetworkStatus(monitors, status)
         monitors[i].setCursorPos(10, 4)
         
         --Set the text colour to green for online, red for offline, yellow for preparing, grey for shutting down, and red for error
-        if status == networkStatus.online then
+        if status == self.networkStatus.online then
             monitors[i].setTextColor(colors.green)
-        elseif status == networkStatus.offline then
+        elseif status == self.networkStatus.offline then
             monitors[i].setTextColor(colors.red)
-        elseif status == networkStatus.preparing then
+        elseif status == self.networkStatus.preparing then
             monitors[i].setTextColor(colors.yellow)
-        elseif status == networkStatus.shuttingDown then
+        elseif status == self.networkStatus.shuttingDown then
             monitors[i].setTextColor(colors.gray)
-        elseif status == networkStatus.error then
+        elseif status == self.networkStatus.error then
             monitors[i].setTextColor(colors.red)
         else
             --If the status is not recognised, place a question mark
             monitors[i].setTextColor(colors.yellow)
         end
 
-        monitors[i].write(networkStatusToString(status))
+        monitors[i].write(self.networkStatusToString(status))
 
         --Change the text colour back to white
         monitors[i].setTextColor(colors.white)
@@ -173,7 +156,7 @@ function updateNetworkStatus(monitors, status)
 end
 
 --Function to update the database status on the monitors
-function updateDatabaseStatus(monitors, status) 
+local _updateDatabaseStatus = function(self, monitors, status) 
    for i = 1, #monitors do
         --Below the word "Network:", place the word "Database:" on the left
         Monitors[i].setCursorPos(1, 5)
@@ -183,22 +166,22 @@ function updateDatabaseStatus(monitors, status)
         Monitors[i].setCursorPos(11, 5)
         
         --Set the text colour to green for online, red for offline, yellow for preparing, grey for shutting down, and red for error
-        if status == networkStatus.online then
+        if status == self.networkStatus.online then
             monitors[i].setTextColor(colors.green)
-        elseif status == networkStatus.offline then
+        elseif status == self.networkStatus.offline then
             monitors[i].setTextColor(colors.red)
-        elseif status == networkStatus.preparing then
+        elseif status == self.networkStatus.preparing then
             monitors[i].setTextColor(colors.yellow)
-        elseif status == networkStatus.shuttingDown then
+        elseif status == self.networkStatus.shuttingDown then
             monitors[i].setTextColor(colors.gray)
-        elseif status == networkStatus.error then
+        elseif status == self.networkStatus.error then
             monitors[i].setTextColor(colors.red)
         else
             --If the status is not recognised, place a question mark
             monitors[i].setTextColor(colors.yellow)
         end
 
-        monitors[i].write(networkStatusToString(status))
+        monitors[i].write(self.networkStatusToString(status))
     
         --Change the text colour back to white
         monitors[i].setTextColor(colors.white)
@@ -206,107 +189,10 @@ function updateDatabaseStatus(monitors, status)
 end
 --endregion
 
---region Utility Functions
-
---Function to convert status number to string
-function statusToString(status)
-    if status == processorStatus.disconnected then
-        return "Disconnected"
-    elseif status == processorStatus.ready then
-        return "Ready"
-    elseif status == processorStatus.processing then
-        return "Processing"
-    elseif status == processorStatus.error then
-        return "Error"
-    elseif status == processorStatus.shuttingDown then
-        return "Shutting Down"
-    else
-        return "Unknown"
-    end
-end
-
---Function to convert status string to number
-function processorStatusToNumber(status)
-
-    status = string.lower(status)
-
-    if status == "disconnected" then
-        return processorStatus.disconnected
-    elseif status == "ready" then
-        return processorStatus.ready
-    elseif status == "processing" then
-        return processorStatus.processing
-    elseif status == "error" then
-        return processorStatus.error
-    elseif status == "shutting down" then
-        return processorStatus.shuttingDown
-    else
-        return -1
-    end
-end
-
---Function to convert status string to number
-function networkStatusToNumber(status)
-
-    status = string.lower(status)
-
-    if status == "disconnected" then
-        return processorStatus.disconnected
-    elseif status == "ready" then
-        return processorStatus.ready
-    elseif status == "processing" then
-        return processorStatus.processing
-    elseif status == "error" then
-        return processorStatus.error
-    elseif status == "shutting down" then
-        return processorStatus.shuttingDown
-    else
-        return -1
-    end
-end
-
---Function to convert network status number to string
-function networkStatusToString(status)
-    if status == networkStatus.offline then
-        return "Offline"
-    elseif status == networkStatus.online then
-        return "Online"
-    elseif status == networkStatus.preparing then
-        return "Preparing"
-    elseif status == networkStatus.shuttingDown then
-        return "Shutting Down"
-    elseif status == networkStatus.error then
-        return "Error"
-    else
-        return "Unknown"
-    end
-end
-
---Function to convert ID to a Title Case string
-function idToTitleCase(id)
-    --Split the ID into a list of characters
-    local idChars = { string.sub(id, 1, string.len(id)) }
-
-    --Convert the first character to upper case
-    idChars[1] = string.upper(idChars[1])
-
-    --For each character in the list, if the previous character is a space, convert it to upper case
-    for i = 2, #idChars do
-        if idChars[i] == " " then
-            idChars[i] = string.upper(idChars[i])
-        end
-    end
-
-    --Join the list of characters into a string and return it
-    return table.concat(idChars)
-end
-
---endregion
-
 --region Account Data Functions
 
 --Load the account data from the file
-function loadAccountData(path)
+local _loadAccountData = function(self, path)
     --Load the account data from the file (.dat)
     --If the file does not exist, return nil
     --If the file exists, return the account data parsed from the JSON file
@@ -340,7 +226,7 @@ function loadAccountData(path)
 end
 
 --Save the account data to the file
-function saveAccountData(path, accountData)
+local _saveAccountData = function(self, path, accountData)
     --Save the account data to the file (.dat)
     --If the file does not exist, create it
     --If the file exists, overwrite it
@@ -356,7 +242,7 @@ function saveAccountData(path, accountData)
 end
 
 --Modify the data of an account
-function modifyAccountData(username, data)
+local _modifyAccountData = function(self, username, data)
     --If the account data is nil, return false
     if (AccountData == nil) then
         return false
@@ -385,14 +271,14 @@ function modifyAccountData(username, data)
     end
 
     --Save the account data to the file
-    saveAccountData(ACCOUNT_DATA_FILE, AccountData)
+    _saveAccountData(ACCOUNT_DATA_FILE, AccountData)
 
     --Return true
     return true
 end
 
 --Get the data of an account
-function getAccountData(accountData, username)
+local _getAccountData = function(self, accountData, username)
     --If the account data is nil, return nil
     if (accountData == nil) then
         return nil
@@ -417,7 +303,7 @@ function getAccountData(accountData, username)
 end
 
 --Add an account to the account data
-function addAccountData(data)
+local _addAccountData = function(self, data)
     --If the account data is nil, create a new list
     if (AccountData == nil) then
         AccountData = {}
@@ -433,7 +319,7 @@ function addAccountData(data)
     AccountData[#AccountData + 1] = data
 
     --Save the account data to the file
-    saveAccountData(ACCOUNT_DATA_FILE, AccountData)
+    _saveAccountData(ACCOUNT_DATA_FILE, AccountData)
 
     --Return true
     return true
@@ -441,294 +327,10 @@ end
 
 --endregion
 
---region Network Events
-function onNetworkStartup()
-    --Get the side of the wireless modem and make sure it is not the wired modem
-    local modemSide
-    local modems = { peripheral.find("modem", function(name, modem)
-        return modem.isWireless() -- Check this modem is wireless.
-    end) }
-    
-    for _, modem in pairs(modems) do
-        --Get the side that the modem is on
-        modemSide = peripheral.getName(modem)
-      end
-
-    --Prepare the network connections
-    HostSocket = cryptoNET.host(HOST_CONTROLLER_SERVER, false, false, modemSide)
-    --ClientSocket = cryptoNET.host(CLIENT_ACCESS_SERVER, false)
-
-    print("Event loop started")
-
-    updateNetworkStatus(Monitors, networkStatus.online)
-end
-
-function onNetworkEventRaised(event)
-    --Different events have different parameters:
-    -- connection_opened
-    -- -> socket, server
-    -- connection_closed
-    -- -> socket, server
-    -- encrypted_message
-    -- -> message, socket, server
-    -- plain_message
-    -- -> message, socket, server
-    -- login
-    -- -> username, socket, server
-    -- login_failed
-    -- -> username, socket, server
-    -- logout
-    -- -> username, socket, server
-    -- key_up
-    -- -> key
-    local eventType = event[1]    
-
-    if (eventType == "connection_opened") then
-        local socket = event[2]
-        local server = event[3]
-
-        onConnectionOpened(socket, server)
-    elseif (eventType == "connection_closed") then
-        local socket = event[2]
-        local server = event[3]
-
-        onConnectionClosed(socket, server)
-    elseif (eventType == "encrypted_message") then
-        local message = event[2]
-        local socket = event[3]
-        local server = event[4]
-
-        onEncryptedMessageReceived(message, socket, server)
-    elseif (eventType == "plain_message") then
-        local message = event[2]
-        local socket = event[3]
-        local server = event[4]
-
-        onPlainMessageReceived(message, socket, server)
-    elseif (eventType == "login") then
-        local username = event[2]
-        local socket = event[3]
-        local server = event[4]
-
-        onLogin(username, socket, server)
-    elseif (eventType == "login_failed") then
-        local username = event[2]
-        local socket = event[3]
-        local server = event[4]
-
-        onLoginFailed(username, socket, server)
-    elseif (eventType == "logout") then
-        local username = event[2]
-        local socket = event[3]
-        local server = event[4]
-
-        onLogout(username, socket, server)
-    --Add a check for a key press event, and if the key is "q", then shut down the network
-    elseif (eventType == "key_up") then
-        local key = event[2]
-        
-        onKeyUp(key)
-    elseif (eventType == "terminate") then
-        onTerminate()
-    end
-end
---endregion
-
---region Event Handlers
-
---Connection Opened Event Handler
-function onConnectionOpened(socket, server)
-    print("Connection opened" .. socket.target)
-
-    cryptoNET.send(socket, "Hello")
-end
-
---Connection Closed Event Handler
-function onConnectionClosed(socket, server)
-    print("Connection closed" .. socket.target)
-end
-
---Encrypted Message Received Event Handler
-function onEncryptedMessageReceived(message, socket, server)
-    --If the message is an object, then check the type property
-    --If the type is intention, then verify the intention
-
-    --Check that the message is an object
-    if (type(message) ~= "table") then
-        return
-    end
-
-    --Check that the message has a type property
-    if (message.type == nil) then
-        return
-    end
-
-    --Check that the message type is intention
-    if (message.type == "intention") then
-        --Get the account data for the socket username
-        local accountData = getAccountData(AccountData, socket.username)
-
-        --If the account data is nil, then the account does not exist, so return
-        if (accountData == nil) then
-            return
-        end
-
-        --Check that the intention is the same as the account intention
-        if (message.message ~= accountData.intention) then
-            --If the intention is not the same, then send a message to the client to disconnect
-            cryptoNET.send(socket, "disconnect")
-        else
-            --If the intention is the same, then send a message to the client to activate
-            cryptoNET.send(socket, "activate")
-
-            --Set the processor status to processing
-            for i = 1, #Processors do
-                if (Processors[i].id == accountData.intention) then
-                    Processors[i].status = processorStatus.ready
-                    break
-                end
-            end
-
-            --Update the processor states
-            updateProcessorStates(Monitors, Processors)
-        end
-
-        --If the type is status, then update the status of the relevant processor
-    elseif (message.type == "status") then
-        --Get the socket username
-        local username = socket.username
-
-        --Get the account data for the socket username
-        local accountData = getAccountData(AccountData, username)
-
-        --If the account data is nil, then the account does not exist, so return
-        if (accountData == nil) then
-            return
-        end
-
-        --Get the processor ID
-        local processorId = accountData.intention
-
-        --Convert the status to a number
-        local status = processorStatusToNumber(message.message)
-
-        --Update the status of the relevant processor
-        for i = 1, #Processors do
-            if (Processors[i].id == processorId) then
-                Processors[i].status = status
-                break
-            end
-        end
-
-        --Update the processor states
-        updateProcessorStates(Monitors, Processors)
-    end
-end
-
---Plain Message Received Event Handler
-function onPlainMessageReceived(message, socket, server)
-    print("Plain message" .. message .. socket.target)
-end
-
---Login Event Handler
-function onLogin(username, socket, server)
-    print("Login" .. username .. socket.target)
-
-    --Get the account data
-    local accountData = getAccountData(AccountData, username)
-
-    --If the account data is nil, then the account does not exist, so return
-    if (accountData == nil) then
-        return
-    end
-
-    --Process the intention
-    --Temporarily, just print the intention
-    print(accountData.intention)
-
-    --Send a request to the client to get the intention
-    cryptoNET.send(socket, "get_intention")
-end
-
---Login Failed Event Handler
-function onLoginFailed(username, socket, server)
-    print("Login failed" .. username .. socket.target)
-end
-
---Logout Event Handler
-function onLogout(username, socket, server)
-    print("Logout" .. username .. socket.target)
-end
-
---Key Up Event Handler
-function onKeyUp(key)
-    if (TerminalOpen) then
-        --If the terminal is open, then accept input from the terminal and don't process key presses
-        return
-    end
-
-    if (key == keys.q) then
-        print("Q key pressed, shutting down server")
-        cryptoNET.closeAll()
-    end
-
-    --If the key is "t", then accept input from the terminal
-    if (key == keys.t) then
-        print("T key pressed, accepting input from terminal")
-        TerminalOpen = true
-
-        --Print available commands
-        print("Available commands:")
-        print("createServiceAccount [username] [password] [intention]")
-        print("cancel")
-
-        local input = read()
-        
-        --Split the input into a list of words, separated by spaces
-        local inputWords = {}
-        for word in input:gmatch("([^%s]+)") do table.insert(inputWords, word) end
-
-        --If the first word is "createServiceAccount", then call the createServiceAccount function
-        if (inputWords[1] == "createServiceAccount") then
-            --Check that the input is valid
-            if (#inputWords ~= 4) then
-                print("Invalid input")
-                TerminalOpen = false
-                return
-            end
-
-            --Call the createServiceAccount function
-            local success = createServiceAccount(inputWords[2], inputWords[3], inputWords[4], HostSocket)
-
-            --If the account was created successfully, print a success message
-            if (success) then
-                print("Account created successfully")
-            else
-                print("Account creation failed")
-            end
-        
-        --If the first word is "cancel", then cancel the terminal input
-        elseif (inputWords[1] == "cancel") then
-            print("Terminal input cancelled")
-        else
-            print("Invalid input")
-        end
-
-        TerminalOpen = false
-    end
-end
-
---Terminate Event Handler
-function onTerminate()
-    print("Terminate event raised, shutting down server")
-    cryptoNET.closeAll()
-end
---endregion
-
 --region Service Account Functions
 
 --Function to create a service account
-function createServiceAccount(id, password, intention, server)
+local _createServiceAccount = function(self, id, password, intention, server)
     --Create a new account with the ID and password
     --If the account already exists, return false
     --If the account is created successfully, return true
@@ -746,87 +348,262 @@ function createServiceAccount(id, password, intention, server)
     }
 
     --Add the account data to the account data file
-    addAccountData(accountData)
+    _addAccountData(accountData)
 
     return true
 end
 
 --endregion
 
+--region Network Events
+function HostController:onNetworkStartup()
+    --Get the side of the wireless modem and make sure it is not the wired modem
+    local modemSide
+    local modems = { peripheral.find("modem", function(name, modem)
+        return modem.isWireless() -- Check this modem is wireless.
+    end) }
+    
+    for _, modem in pairs(modems) do
+        --Get the side that the modem is on
+        modemSide = peripheral.getName(modem)
+      end
+
+    --Prepare the network connections
+    HostSocket = cryptoNET.host(HOST_CONTROLLER_SERVER, false, false, modemSide)
+    --ClientSocket = cryptoNET.host(CLIENT_ACCESS_SERVER, false)
+
+    print("Event loop started")
+
+    _updateNetworkStatus(Monitors, self.networkStatus.online)
+end
+
 --endregion
 
---region Variables
---Try to get the attached monitors
-Monitors = { peripheral.find("monitor") }
+--region Event Handlers
 
---The processors list will store the different processing units linked to the host controller
-Processors = {
-    --Add a dummy processor to the list
-    { id = "accounts", status = processorStatus.disconnected },
-    { id = "transit",  status = processorStatus.disconnected },
-    { id = "gambling", status = processorStatus.disconnected },
-    { id = "market",   status = processorStatus.disconnected },
-    { id = "loans",    status = processorStatus.disconnected },
-    { id = "admin",    status = processorStatus.disconnected }
-}
+--Connection Opened Event Handler
+function HostController:connectionOpenedBehaviour(socket, server)
+    cryptoNET.send(socket, "Hello")
+end
 
-AccountData = loadAccountData(ACCOUNT_DATA_FILE)
-TerminalOpen = false
-HostSocket = nil
-ClientSocket = nil
+--Connection Closed Event Handler
+function HostController:connectionClosedBehaviour(socket, server)
+end
+
+--Encrypted Message Received Event Handler
+function HostController:encryptedMessageBehaviour(message, socket, server)
+    --If the message is an object, then check the type property
+    --If the type is intention, then verify the intention
+
+    --Check that the message is an object
+    if (type(message) ~= "table") then
+        return
+    end
+
+    --Check that the message has a type property
+    if (message.type == nil) then
+        return
+    end
+
+    --Check that the message type is intention
+    if (message.type == "intention") then
+        --Get the account data for the socket username
+        local accountData = _getAccountData(self, AccountData, socket.username)
+
+        --If the account data is nil, then the account does not exist, so return
+        if (accountData == nil) then
+            return
+        end
+
+        --Check that the intention is the same as the account intention
+        if (message.message ~= accountData.intention) then
+            --If the intention is not the same, then send a message to the client to disconnect
+            cryptoNET.send(socket, "disconnect")
+        else
+            --If the intention is the same, then send a message to the client to activate
+            cryptoNET.send(socket, "activate")
+
+            --Set the processor status to processing
+            for i = 1, #Processors do
+                if (Processors[i].id == accountData.intention) then
+                    Processors[i].status = self.processorStatus.ready
+                    break
+                end
+            end
+
+            --Update the processor states
+            _updateProcessorStates(self, Monitors, Processors)
+        end
+
+        --If the type is status, then update the status of the relevant processor
+    elseif (message.type == "status") then
+        --Get the socket username
+        local username = socket.username
+
+        --Get the account data for the socket username
+        local accountData = _getAccountData(self, AccountData, username)
+
+        --If the account data is nil, then the account does not exist, so return
+        if (accountData == nil) then
+            return
+        end
+
+        --Get the processor ID
+        local processorId = accountData.intention
+
+        --Convert the status to a number
+        local status = self.processorStatusToNumber(message.message)
+
+        --Update the status of the relevant processor
+        for i = 1, #Processors do
+            if (Processors[i].id == processorId) then
+                Processors[i].status = status
+                break
+            end
+        end
+
+        --Update the processor states
+        _updateProcessorStates(self, Monitors, Processors)
+    end
+end
+
+--Plain Message Received Event Handler
+function HostController:plainMessageBehaviour(message, socket, server)
+end
+
+--Login Event Handler
+function HostController:loginBehaviour(username, socket, server)
+    --Get the account data
+    local accountData = _getAccountData(self, AccountData, username)
+
+    --If the account data is nil, then the account does not exist, so return
+    if (accountData == nil) then
+        return
+    end
+
+    --Process the intention
+    --Temporarily, just print the intention
+    print(accountData.intention)
+
+    --Send a request to the client to get the intention
+    cryptoNET.send(socket, "get_intention")
+end
+
+--Login Failed Event Handler
+function HostController:loginFailedBehaviour(username, socket, server)
+end
+
+--Logout Event Handler
+function HostController:logoutBehaviour(username, socket, server)
+end
+
+--Key Up Event Handler
+function HostController:keyUpBehaviour(key)
+    --If the key is "t", then accept input from the terminal
+    if (key == keys.t) then
+        print("T key pressed, accepting input from terminal")
+        self._freezeKeyInput = true
+
+        --Print available commands
+        print("Available commands:")
+        print("createServiceAccount [username] [password] [intention]")
+        print("cancel")
+
+        local input = read()
+        
+        --Split the input into a list of words, separated by spaces
+        local inputWords = {}
+        for word in input:gmatch("([^%s]+)") do table.insert(inputWords, word) end
+
+        --If the first word is "createServiceAccount", then call the createServiceAccount function
+        if (inputWords[1] == "createServiceAccount") then
+            --Check that the input is valid
+            if (#inputWords ~= 4) then
+                print("Invalid input")
+                self._freezeKeyInput = false
+                return
+            end
+
+            --Call the createServiceAccount function
+            local success = _createServiceAccount(self, inputWords[2], inputWords[3], inputWords[4], HostSocket)
+
+            --If the account was created successfully, print a success message
+            if (success) then
+                print("Account created successfully")
+            else
+                print("Account creation failed")
+            end
+        
+        --If the first word is "cancel", then cancel the terminal input
+        elseif (inputWords[1] == "cancel") then
+            print("Terminal input cancelled")
+        else
+            print("Invalid input")
+        end
+
+        self._freezeKeyInput = false
+    end
+end
+
+--Terminate Event Handler
+function HostController:terminateBehaviour()
+end
 --endregion
 
 --region Main Code
---For each monitor, calculate the size of the screen and store it in a list, split into width and height
-local monitorSizes = {}
-for i = 1, #Monitors do
-    monitorSizes[i] = { Monitors[i].getSize() }
+function HostController:startServer()
+    
+    --For each monitor, calculate the size of the screen and store it in a list, split into width and height
+    local monitorSizes = {}
+    for i = 1, #Monitors do
+        monitorSizes[i] = { Monitors[i].getSize() }
+    end
+
+    --For each monitor, calculate the midpoint of both the width and height and store it in a list, split into x and y
+    local monitorMidpoints = {}
+    for i = 1, #Monitors do
+        monitorMidpoints[i] = { math.floor(monitorSizes[i][1] / 2), math.floor(monitorSizes[i][2] / 2) }
+    end
+
+    --Set all Monitors to have grey background and white text
+    for i = 1, #Monitors do
+        Monitors[i].setTextColor(colors.white)
+        Monitors[i].setBackgroundColor(colors.gray)
+
+        --Clear the screen to make sure colours are applied
+        Monitors[i].clear()
+    end
+
+    --Place the word "BankSys" in the top middle of the screens
+    for i = 1, #Monitors do
+        Monitors[i].setCursorPos(monitorMidpoints[i][1] - 2, 1)
+        Monitors[i].write("BankSys")
+
+        --Below the word "BankSys", place the word "Control" in the middle of the screen
+        Monitors[i].setCursorPos(monitorMidpoints[i][1] - 2, 2)
+        Monitors[i].write("Control")
+    end
+
+    --On the left, place the word "Status"
+    for i = 1, #Monitors do
+        Monitors[i].setCursorPos(1, 3)
+        Monitors[i].write("Status")
+    end
+
+    _updateNetworkStatus(self, Monitors, self.networkStatus.preparing)
+
+    _updateDatabaseStatus(self, Monitors, self.networkStatus.offline)
+
+    _updateProcessorStates(self, Monitors, Processors)
+
+    --local mainFrame = basalt.createFrame()
+    --local button = mainFrame:addButton():setText("Test")
+
+    --basalt.autoUpdate()
+
+    cryptoNET.startEventLoop(onNetworkStartup, onNetworkEventRaised)
+
+    --endregion
 end
 
---For each monitor, calculate the midpoint of both the width and height and store it in a list, split into x and y
-local monitorMidpoints = {}
-for i = 1, #Monitors do
-    monitorMidpoints[i] = { math.floor(monitorSizes[i][1] / 2), math.floor(monitorSizes[i][2] / 2) }
-end
-
---Set all Monitors to have grey background and white text
-for i = 1, #Monitors do
-    Monitors[i].setTextColor(colors.white)
-    Monitors[i].setBackgroundColor(colors.gray)
-
-    --Clear the screen to make sure colours are applied
-    Monitors[i].clear()
-end
-
---Place the word "BankSys" in the top middle of the screens
-for i = 1, #Monitors do
-    Monitors[i].setCursorPos(monitorMidpoints[i][1] - 2, 1)
-    Monitors[i].write("BankSys")
-
-    --Below the word "BankSys", place the word "Control" in the middle of the screen
-    Monitors[i].setCursorPos(monitorMidpoints[i][1] - 2, 2)
-    Monitors[i].write("Control")
-end
-
---On the left, place the word "Status"
-for i = 1, #Monitors do
-    Monitors[i].setCursorPos(1, 3)
-    Monitors[i].write("Status")
-
-   
-end
-
-updateNetworkStatus(Monitors, networkStatus.preparing)
-
-updateDatabaseStatus(Monitors, networkStatus.offline)
-
-updateProcessorStates(Monitors, Processors)
-
---local mainFrame = basalt.createFrame()
---local button = mainFrame:addButton():setText("Test")
-
---basalt.autoUpdate()
-
-cryptoNET.startEventLoop(onNetworkStartup, onNetworkEventRaised)
-
---endregion
+return HostController

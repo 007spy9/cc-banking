@@ -69,6 +69,136 @@ Controller = class("Controller")
 Controller.static.CONFIG_FILE = "controller.cfg"
 --endregion
 
+--region Data Types
+
+--region Data Types
+--Define the different statuses of a processor
+Controller.static.processorStatus = {
+    --The processor is offline or disconnected
+    disconnected = 0,
+    --The processor is online and ready to process
+    ready = 1,
+    --The processor is online and processing
+    processing = 2,
+    --The processor has encountered an error
+    error = 3,
+    --The processor is online and is shutting down
+    shuttingDown = 4
+}
+
+Controller.static.networkStatus = {
+    --The network is offline
+    offline = 0,
+    --The network is online
+    online = 1,
+    --The network is starting up
+    preparing = 2,
+    --The network is shutting down
+    shuttingDown = 3,
+    --The network has an error
+    error = 4
+}
+--endregion
+
+--endregion
+
+--region Utility Functions
+
+--Function to convert status number to string
+function Controller:statusToString(status)
+    if status == self.processorStatus.disconnected then
+        return "Disconnected"
+    elseif status == self.processorStatus.ready then
+        return "Ready"
+    elseif status == self.processorStatus.processing then
+        return "Processing"
+    elseif status == self.processorStatus.error then
+        return "Error"
+    elseif status == self.processorStatus.shuttingDown then
+        return "Shutting Down"
+    else
+        return "Unknown"
+    end
+end
+
+--Function to convert status string to number
+function Controller:processorStatusToNumber(status)
+
+    status = string.lower(status)
+
+    if status == "disconnected" then
+        return self.processorStatus.disconnected
+    elseif status == "ready" then
+        return self.processorStatus.ready
+    elseif status == "processing" then
+        return self.processorStatus.processing
+    elseif status == "error" then
+        return self.processorStatus.error
+    elseif status == "shutting down" then
+        return self.processorStatus.shuttingDown
+    else
+        return -1
+    end
+end
+
+--Function to convert status string to number
+function Controller:networkStatusToNumber(status)
+
+    status = string.lower(status)
+
+    if status == "disconnected" then
+        return self.processorStatus.disconnected
+    elseif status == "ready" then
+        return self.processorStatus.ready
+    elseif status == "processing" then
+        return self.processorStatus.processing
+    elseif status == "error" then
+        return self.processorStatus.error
+    elseif status == "shutting down" then
+        return self.processorStatus.shuttingDown
+    else
+        return -1
+    end
+end
+
+--Function to convert network status number to string
+function Controller:networkStatusToString(status)
+    if status == self.networkStatus.offline then
+        return "Offline"
+    elseif status == self.networkStatus.online then
+        return "Online"
+    elseif status == self.networkStatus.preparing then
+        return "Preparing"
+    elseif status == self.networkStatus.shuttingDown then
+        return "Shutting Down"
+    elseif status == self.networkStatus.error then
+        return "Error"
+    else
+        return "Unknown"
+    end
+end
+
+--Function to convert ID to a Title Case string
+function Controller:idToTitleCase(id)
+    --Split the ID into a list of characters
+    local idChars = { string.sub(id, 1, string.len(id)) }
+
+    --Convert the first character to upper case
+    idChars[1] = string.upper(idChars[1])
+
+    --For each character in the list, if the previous character is a space, convert it to upper case
+    for i = 2, #idChars do
+        if idChars[i] == " " then
+            idChars[i] = string.upper(idChars[i])
+        end
+    end
+
+    --Join the list of characters into a string and return it
+    return table.concat(idChars)
+end
+
+--endregion
+
 --region Constructor
 function Controller:initialize(configFileName)
     self.CONFIG_FILE = configFileName
@@ -76,6 +206,7 @@ function Controller:initialize(configFileName)
     self._config = nil
     self._connectionEstablished = false
     self._activated = false
+    self._freezeKeyInput = false
 end
 --endregion
 
@@ -114,6 +245,8 @@ function Controller:onNetworkStartup()
 
     --Send a login message to the host controller
     cryptoNET.login(self._serverSocket, self._config.systemUsername, self._config.systemPassword)
+
+    self.networkStartupBehaviour()
 end
 
 function Controller:onNetworkEventRaised(event)
@@ -183,6 +316,8 @@ function Controller:onNetworkEventRaised(event)
     elseif (eventType == "terminate") then
         self.onTerminate()
     end
+
+    self.networkEventBehaviour(event)
 end
 
 --Connection Opened Event Handler
@@ -279,13 +414,16 @@ end
 
 --Key Up Event Handler
 function Controller:onKeyUp(key)
+    if (self._freezeKeyInput) then
+        --If the terminal is open, then accept input from the terminal and don't process key presses
+        return
+    end
+    
     if (key == keys.q) then
         reportStatus("shutting down")
         print("Q key pressed, shutting down server")
         reportStatus("disconnected")
         cryptoNET.closeAll()
-
-        os.shutdown()
     end
 
     self.keyUpBehaviour(key)
@@ -302,6 +440,14 @@ end
 --endregion
 
 --region Virtual Methods
+
+function Controller:networkStartupBehaviour()
+    
+end
+
+function Controller:networkEventBehaviour(event)
+    
+end
 
 function Controller:connectionOpenedBehaviour(socket, server)
 

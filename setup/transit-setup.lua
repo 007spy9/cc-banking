@@ -100,13 +100,6 @@ print("Setup")
 
 sleep(2)
 
---Start by deleting existing files
---Delete the cryptoAPI
-fs.delete(cryptoApiFileName)
-
---Delete the controller
-fs.delete(controllerFileName)
-
 sleep(1)
 
 --Clear the screen

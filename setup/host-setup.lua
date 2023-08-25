@@ -45,12 +45,25 @@ local function wget(option, url, ziel)
 --#endregion
 
 --#region Variables
---The pastebin code for the cryptoAPI
-local cryptoApiPaste = "https://raw.githubusercontent.com/SiliconSloth/CryptoNet/master/cryptoNet.lua" 
-local basaltPaste = "https://basalt.madefor.cc/install.lua"
+--The URL for the cryptoAPI (DO NOT CHANGE)
+local _cryptoApiPaste = "https://raw.githubusercontent.com/SiliconSloth/CryptoNet/master/cryptoNet.lua" 
+local cryptoApiFileName = "cryptoNET"
 
- --The pastebin code for the hostController
-local hostControllerPaste = "RP4yYwVS"
+--The URL for the middleclass API (DO NOT CHANGE)
+local _middleclassPaste = "https://raw.githubusercontent.com/kikito/middleclass/master/middleclass.lua"
+local middleClassFileName = "middleclass"
+
+--The URLs for controller class files (DO NOT CHANGE)
+local controllerCorePaste = "https://raw.githubusercontent.com/007spy9/cc-banking/host-controller-v1/controller/controller.lua"
+local controllerCoreName = "controller"
+
+--The URL for the current controller implementation
+local currentControllerPaste = "https://raw.githubusercontent.com/007spy9/cc-banking/host-controller-v1/controller/host_controller/host_controller.lua"
+local currentControllerMainPaste = "https://raw.githubusercontent.com/007spy9/cc-banking/host-controller-v1/controller/host_controller/host_controller_main.lua"
+
+local currentControllerFileName = "host_controller"
+local currentControllerMainFileName = "host_controller_main"
+
 --#endregion
 
 --#region Processing
@@ -86,11 +99,6 @@ print("Setup")
 sleep(2)
 
 --Start by deleting existing files
---Delete the cryptoAPI
-fs.delete("cryptoNET")
-
---Delete the hostController
-fs.delete("hostController")
 
 --Delete the server certificate
 fs.delete("BankNet.BankSys.Host.crt")
@@ -120,10 +128,19 @@ term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 2)
 print("Installing...")
 
 --Download the cryptoAPI into the root directory in the background
-wget(cryptoApiPaste, "cryptoNET")
+wget(_cryptoApiPaste, cryptoApiFileName)
 
---Download the hostController into the root directory in the background
-shell.run("pastebin", "get", hostControllerPaste, "hostController")
+--Download the middleclass API into the root directory in the background
+wget(_middleclassPaste, middleClassFileName)
+
+--Download the controller core into the root directory in the background
+wget(controllerCorePaste, controllerCoreName)
+
+--Download the current controller implementation into the root directory in the background
+wget(currentControllerPaste, currentControllerFileName)
+
+--Download the current controller main implementation into the root directory in the background
+wget(currentControllerMainPaste, currentControllerMainFileName)
 
 --Clear the screen
 term.clear()
@@ -150,7 +167,7 @@ print("Configuring...")
 
 --Create a startup file to run the hostController on startup
 local startupFile = fs.open("startup", "w")
-startupFile.writeLine("shell.run(\"hostController\")")
+startupFile.writeLine("shell.run(\"" .. currentControllerMainFileName .. "\")")
 startupFile.close()
 
 --Clear the screen
