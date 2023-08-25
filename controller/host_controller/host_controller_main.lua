@@ -13,12 +13,12 @@ local Monitors = { peripheral.find("monitor") }
 --The processors list will store the different processing units linked to the host controller
 local Processors = {
     --Add a dummy processor to the list
-    { id = "accounts", status = Controller.processorStatus.disconnected },
-    { id = "transit",  status = Controller.processorStatus.disconnected },
-    { id = "gambling", status = Controller.processorStatus.disconnected },
-    { id = "market",   status = Controller.processorStatus.disconnected },
-    { id = "loans",    status = Controller.processorStatus.disconnected },
-    { id = "admin",    status = Controller.processorStatus.disconnected }
+    { id = "accounts", status = HostController.processorStatus.disconnected },
+    { id = "transit",  status = HostController.processorStatus.disconnected },
+    { id = "gambling", status = HostController.processorStatus.disconnected },
+    { id = "market",   status = HostController.processorStatus.disconnected },
+    { id = "loans",    status = HostController.processorStatus.disconnected },
+    { id = "admin",    status = HostController.processorStatus.disconnected }
 }
 
 local controller = HostController:new(Monitors, Processors)
