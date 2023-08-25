@@ -334,7 +334,7 @@ local Monitors = {}
 --The processors list will store the different processing units linked to the host controller
 local Processors = {}
 
-local AccountData = _loadAccountData(ACCOUNT_DATA_FILE)
+local AccountData = nil
 
 local HostSocket = nil
 local ClientSocket = nil
@@ -346,6 +346,7 @@ function HostController:initialize(monitors, processors)
     Controller.initialize(self, "host_controller.cfg")
     Monitors = monitors
     Processors = processors
+    AccountData = _loadAccountData(self, ACCOUNT_DATA_FILE)
 end
 
 --endregion
