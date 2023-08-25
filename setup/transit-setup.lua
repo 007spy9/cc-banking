@@ -55,12 +55,12 @@ local _middleclassPaste = "https://raw.githubusercontent.com/kikito/middleclass/
 local middleClassFileName = "middleclass"
 
 --The URLs for controller class files (DO NOT CHANGE)
-local controllerCorePaste = "https://drive.google.com/file/d/1utWKZRlyE3TNarHw_uzu3CqAF_DqlVHn/view?usp=drive_link"
+local controllerCorePaste = "https://raw.githubusercontent.com/007spy9/cc-banking/host-controller-v1/controller/controller.lua"
 local controllerCoreName = "controller"
 
 --The URL for the current controller implementation
-local currentControllerPaste = "/"
-local currentControllerMainPaste = "/"
+local currentControllerPaste = "https://raw.githubusercontent.com/007spy9/cc-banking/host-controller-v1/controller/transit_controller/transit_controller.lua"
+local currentControllerMainPaste = "https://raw.githubusercontent.com/007spy9/cc-banking/host-controller-v1/controller/transit_controller/transit_controller_main.lua"
 
 local currentControllerFileName = "transit_controller"
 local currentControllerMainFileName = "transit_controller_main"
