@@ -1,6 +1,7 @@
 --Lua script to obtain the relevant pastebin code for the hostController
 
 --This will install and configure the hostController
+
 --#region Functions
 local function wget(option, url, ziel)
     if type(url) ~= "string" and type(ziel) ~= "string" then
@@ -45,33 +46,41 @@ local function wget(option, url, ziel)
 --#endregion
 
 --#region Variables
---The pastebin code for the cryptoAPI
-local cryptoApiPaste = "https://raw.githubusercontent.com/SiliconSloth/CryptoNet/master/cryptoNet.lua" 
-
- --The pastebin code for the controller
-local controllerPaste = "fqiGtNA1"
-
+--The URL for the cryptoAPI (DO NOT CHANGE)
+local _cryptoApiPaste = "https://raw.githubusercontent.com/SiliconSloth/CryptoNet/master/cryptoNet.lua" 
 local cryptoApiFileName = "cryptoNET"
-local controllerFileName = "transit_controller"
+
+--The URL for the middleclass API (DO NOT CHANGE)
+local _middleclassPaste = "https://raw.githubusercontent.com/kikito/middleclass/master/middleclass.lua"
+local middleClassFileName = "middleclass"
+
+--The URLs for controller class files (DO NOT CHANGE)
+local controllerCorePaste = "https://drive.google.com/file/d/1utWKZRlyE3TNarHw_uzu3CqAF_DqlVHn/view?usp=drive_link"
+local controllerCoreName = "controller"
+
+--The URL for the current controller implementation
+local currentControllerPaste = "/"
+local currentControllerMainPaste = "/"
+
+local currentControllerFileName = "transit_controller"
+local currentControllerMainFileName = "transit_controller_main"
+
 local controllerConfigFileName = "transit_controller.cfg"
+
 local systemName = "Transit Controller"
-local serverHost = "BankNet.BankSys.Host"
 local intention = "transit"
+
+local serverHost = "BankNet.BankSys.Host"
 --#endregion
 
 --#region Processing
---Set the background colour to blue
+--Set the background colour to blue and the text colour to white
 term.setBackgroundColor(colors.blue)
-
---Clear the screen
 term.clear()
-
---Set the text colour to white
 term.setTextColor(colors.white)
 
 --Set the cursor position to the middle of the screen
 local x,y = term.getSize()
-
 term.setCursorPos(math.floor(x / 2) - 5, math.floor(y / 2))
 
 --Write the word "BankSys" in the middle of the screen
@@ -122,10 +131,19 @@ term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 2)
 print("Installing...")
 
 --Download the cryptoAPI into the root directory in the background
-wget(cryptoApiPaste, cryptoApiFileName)
+wget(_cryptoApiPaste, cryptoApiFileName)
 
---Download the hostController into the root directory in the background
-shell.run("pastebin", "get", controllerPaste, controllerFileName)
+--Download the middleclass API into the root directory in the background
+wget(_middleclassPaste, middleClassFileName)
+
+--Download the controller core into the root directory in the background
+wget(controllerCorePaste, controllerCoreName)
+
+--Download the current controller implementation into the root directory in the background
+wget(currentControllerPaste, currentControllerFileName)
+
+--Download the current controller main implementation into the root directory in the background
+wget(currentControllerMainPaste, currentControllerMainFileName)
 
 --Clear the screen
 term.clear()
@@ -139,7 +157,7 @@ print("BankSys")
 --Set the cursor position to the middle of the screen, below the word "BankSys"
 term.setCursorPos(math.floor(x / 2) - 7, math.floor(y / 2) + 1)
 
---Write the word "Host Controller" in the middle of the screen
+--Write the name of the system in the middle of the screen
 print(systemName)
 
 --Set the cursor position to the middle of the screen, below the word "Host Controller"
@@ -178,7 +196,7 @@ configFile.close()
 
 --Create a startup file to run the hostController on startup
 local startupFile = fs.open("startup", "w")
-startupFile.writeLine("shell.run(\"" .. controllerFileName .. "\")")
+startupFile.writeLine("shell.run(\"" .. currentControllerMainFileName .. "\")")
 startupFile.close()
 
 --Clear the screen
