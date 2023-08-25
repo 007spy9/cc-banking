@@ -585,9 +585,9 @@ function HostController:startServer()
         Monitors[i].write("Status")
     end
 
-    _updateNetworkStatus(self, Monitors, self.networkStatus.preparing)
+    _updateNetworkStatus(self, Monitors, Controller.networkStatus.preparing)
 
-    _updateDatabaseStatus(self, Monitors, self.networkStatus.offline)
+    _updateDatabaseStatus(self, Monitors, Controller.networkStatus.offline)
 
     _updateProcessorStates(self, Monitors, Processors)
 
