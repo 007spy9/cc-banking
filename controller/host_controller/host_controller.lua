@@ -9,12 +9,6 @@ local Controller = require("controller")
 
 local HostController = class("HostController", Controller)
 
---region Forward Declarations
-
-local _loadAccountData
-
---endregion
-
 --region Constants
 --The server address for the host controller
 local HOST_CONTROLLER_SERVER = "BankNet.BankSys.Host"
@@ -22,28 +16,6 @@ local CLIENT_ACCESS_SERVER = "BankNet.BankSys.Client"
 
 --The account data file path
 local ACCOUNT_DATA_FILE = "accountData.dat"
---endregion
-
---region Variables
---Try to get the attached monitors
-local Monitors = {}
-
---The processors list will store the different processing units linked to the host controller
-local Processors = {}
-
-local AccountData = _loadAccountData(ACCOUNT_DATA_FILE)
-local HostSocket = nil
-local ClientSocket = nil
---endregion
-
---region Constructor
-
-function HostController:initialize(monitors, processors)
-    Controller.initialize(self, "host_controller.cfg")
-    Monitors = monitors
-    Processors = processors
-end
-
 --endregion
 
 --region UI Functions
@@ -355,6 +327,28 @@ end
 
 --endregion
 
+--region Variables
+--Try to get the attached monitors
+local Monitors = {}
+
+--The processors list will store the different processing units linked to the host controller
+local Processors = {}
+
+local AccountData = _loadAccountData(ACCOUNT_DATA_FILE)
+
+local HostSocket = nil
+local ClientSocket = nil
+--endregion
+
+--region Constructor
+
+function HostController:initialize(monitors, processors)
+    Controller.initialize(self, "host_controller.cfg")
+    Monitors = monitors
+    Processors = processors
+end
+
+--endregion
 --region Network Events
 function HostController:onNetworkStartup()
     --Get the side of the wireless modem and make sure it is not the wired modem
